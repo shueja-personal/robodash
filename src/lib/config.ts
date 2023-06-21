@@ -1,6 +1,7 @@
 import type{ ComponentType, SvelteComponentTyped } from "svelte"
 import { writable, type Writable } from "svelte/store"
 import {v4 as uuid} from "uuid"
+import { widgetDefinitions } from "./widgets"
 
 export type WidgetDefinition = {
     name:String,
@@ -125,6 +126,9 @@ export const loadLayoutFromJSON = (input: Object) : Layout | {errors: string[], 
             if (!('type' in element && typeof element.type === 'string')) {
                 warnings.push(`[${name}] An element was missing a string type, skipping`); continue;
             }
+            if (!(element.type in widgetDefinitions)) {
+                warnings.push(`[${name}] An element had an unknown type, skipping`); continue;
+            }
             outputElement.type.set(element.type)
             let elementName = ""
             if (!('name' in element && typeof element.name === 'string')) {
@@ -137,19 +141,21 @@ export const loadLayoutFromJSON = (input: Object) : Layout | {errors: string[], 
                 outputElement.data.set([])
             } else {
                 // ensure is string array
-                if (Array.isArray(element.data) && element.data.every((source)=> (typeof source === 'string'))) {
+                if (Array.isArray(element.data) && element.data.length > 0 && element.data.every((source)=> (typeof source === 'string'))) {
                     outputElement.data.set(element.data as string[])
                 } else if (typeof element.data === 'string') {
                     // if simple string, encapsulate in array
                     outputElement.data.set([element.data])
                 } else {
                     warnings.push (`[${name}] [${elementName}] Data sources were neither string nor string array`);
-                    outputElement.data.set([])
+                    outputElement.data.set([""])
                 }
             }
 
             //layout
-            let mins = {x: 1, y: 1, width: 1, height: 1}
+            let mins = {x: 1, y: 1,
+                width: widgetDefinitions[element.type]?.config.layout?.minWidth ?? 1,
+                height: widgetDefinitions[element.type]?.config.layout?.minHeight ?? 1}
             if (!('layout' in element && isObject(element.layout))){
                 warnings.push(`[${name}] [${elementName}] Layout malformed`)
                 outputElement.layout.x.set(mins.x);

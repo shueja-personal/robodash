@@ -17,7 +17,12 @@
       "writeFile": true,
       "readDir": true,
       "copyFile": true,
-      "createDir": true
+      "createDir": true,
+      "scope" : ["$APPDATA/plugins"]
+      },
+      "path": {
+        "all": true
+
       }
     },
     "bundle": {
