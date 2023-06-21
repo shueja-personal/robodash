@@ -1,12 +1,12 @@
 <script lang="ts">
-    import { get } from "svelte/store";
+    import { get} from "svelte/store"
+    import type { Writable } from "svelte/store";
     import type {Layout } from "../config";
     import { afterUpdate } from "svelte";
 
     export let selectedTab = 0;
-    export let selectedIndex = 0;
+    export let selectedStore : Writable<string>;
 
-    $: console.log(selectedIndex)
     export let expanded = true;
     export let layout: Layout;
 
@@ -15,6 +15,7 @@
 </script>
 {#if expanded}
 <div style="width:300px; flex-shrink:0; height:100%; background-color: grey; padding:8px">
+    {$selectedStore}
     <!-- <button on:click={()=>save()}> Save Layout</button>
     <button on:click={()=>addWidget(selectedTab,"fms-info")}>+</button>
 <button on:click={()=>{

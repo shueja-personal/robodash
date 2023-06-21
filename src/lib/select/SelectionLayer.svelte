@@ -18,9 +18,9 @@
             ([enableSelection, selected, type, x, y, height, width]) => {
                 console.log(type, x, y, width, height)
                 return {x: (x??1)-1, y: (y??1)-1, h:height, w:width, 
-                    fixed:(selected !== uuid) || !enableSelection,
-                    draggable:(selected === uuid) && enableSelection,
-                    resizable:(selected === uuid) && enableSelection,
+                    fixed:true,
+                    draggable: enableSelection,
+                    resizable: enableSelection,
                     id:uuid,
                     min: {w: widgetDefinitions[type]?.config.layout?.minWidth,
                     h: widgetDefinitions[type]?.config.layout?.minHeight},
@@ -66,7 +66,7 @@ console.log(tab.elements)
 
 <Grid bind:items={modifiedItems} rowHeight={50} gap={[0,0]} let:dataitem let:item {cols} on:pointerup={handleChange}>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div style="background:red" class="h-full w-full" on:mouseover={()=>$selectedStore = item.id} on:mousedown={()=>$selectedStore = item.id}>
+    <div style="background:red" class="h-full w-full" on:mousedown={()=>$selectedStore = item.id}>
         {#if true} <!--we need this block for the consts-->
         {@const config = tab.elements[item.id]} 
        <WidgetWrapper {config}></WidgetWrapper>

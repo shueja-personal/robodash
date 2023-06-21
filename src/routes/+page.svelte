@@ -56,11 +56,11 @@
 </script>
 
 <div class="h-full w-full flex">
-    <ConfigPanel layout={layout} selectedTab={0} expanded={$enableSelection}></ConfigPanel>
+    <ConfigPanel layout={layout} selectedTab={0} bind:selectedStore expanded={$enableSelection}></ConfigPanel>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div class="flex-shrink w-[10px] h-full bg-slate-800" on:click={()=>$enableSelection = !$enableSelection}> >>></div>
     <div style="flex-grow:1">
-        <SelectionLayer {enableSelection} {selectedStore} tab={Object.values(layout)[0]} ></SelectionLayer>
+        <SelectionLayer {enableSelection} bind:selectedStore tab={Object.values(layout)[0]} ></SelectionLayer>
     </div>
 
 </div>
