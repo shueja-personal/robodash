@@ -18,6 +18,16 @@ tauri-build = { version = "1.4.0", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.4.0", features = [ "path-all", "fs-copy-file", "fs-create-dir", "fs-read-dir", "fs-read-file", "fs-write-file"] }
+tokio = { version = "1.28.2", features = ["rt", "sync", "net", "time", "macros", "rt-multi-thread", "parking_lot"] }
+network-tables = { git = "https://github.com/oh-yes-0-fps/network-tables-rs", version = "0.1.4", features = [ "client-v4", "tracing" ] }
+wpilog = { git = "https://github.com/oh-yes-0-fps/wpilog-rs/", version = "^0.1", features = [ "tracing" ] }
+rmpv = "1.0.0"
+single_value_channel = "1.2.2"
+chrono = "0.4.26"
+thiserror = "1.0.40"
+tracing-subscriber = "0.3.17"
+tracing = "0.1.27"
+tracing-appender = "0.2.2"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
