@@ -1,13 +1,14 @@
 import type{ ComponentType, SvelteComponentTyped } from "svelte"
 import { writable, type Writable } from "svelte/store"
 import {v4 as uuid} from "uuid"
+import NT, { type NetworkTablesTypes, type NTStoreTypes } from "./util/NT"
+import type {NTStore} from "./util/NT"
 import { widgetDefinitions } from "./widgets"
 
 export type WidgetDefinition = {
     name:String,
     id:String,
-    data: PropertyDefinition<"string" | "stringarray">,
-    properties:{
+    properties?:{
 
         [key:string]:PropertyDefinition<PropertyType>
     },
@@ -21,6 +22,13 @@ export type PropertyType = "string" | "stringarray"  |
 "integer" | "integerarray" | 
 "boolean" | "booleanarray" |
  "double" | "doublearray"
+
+export interface PropertyTypeMap {
+    "string": string, "stringarray": Array<string>,
+    "integer": number, "integerarray": Array<number>,
+    "double" : number, "doublearray" : Array<number>,
+    "boolean" : boolean, "booleanarray" : Array<boolean>
+}
 
 export interface PropertyTypeMap {
     "string": string, "stringarray": Array<string>,
@@ -54,19 +62,20 @@ export type DashboardTab = {
     elements: {[key:string]:DashboardElement}
 }
 export type DashboardElement = {
-    name: Writable<string>,
+    name: NTStore<string>,
     type: Writable<string>, // The type declaration has less specificity than the schema because we might add elements at runtime
-    data: Writable<Array<string>>,
     layout: ElementLayout,
-    meta?: {
-        [key: string]:Object;   
+    meta: {
+        [key: string]:{
+            [key:string]: NTStoreTypes
+        };   
     }
 }
 export type ElementLayout = {
-    x: Writable<number | undefined>,
-    y: Writable<number | undefined>,
-    width: Writable<number>,
-    height: Writable<number>
+    x: NTStore<number>,
+    y: NTStore<number>,
+    width: NTStore<number>,
+    height: NTStore<number>
 }
 
 let isObject = (obj:any) : obj is Object => {return obj === Object(obj) && Object.prototype.toString.call(obj) !== '[object Array]'}
@@ -112,15 +121,15 @@ export const loadLayoutFromJSON = (input: Object) : Layout | {errors: string[], 
         
         for (let element of elements) {
             let outputElement :DashboardElement= {
-                name: writable(""),
+                name: NT.NTString(""),
                 type: writable(""),
-                data: writable([""]),
                 layout: {
-                    x: writable(undefined),
-                    y: writable(undefined),
-                    width: writable(1),
-                    height: writable(1)
-                }
+                    x: NT.NTInt(1),
+                    y: NT.NTInt(1),
+                    width: NT.NTInt(1),
+                    height: NT.NTInt(1)
+                },
+                meta: {}
             }
             // TODO add type checking against known widgets.
             if (!('type' in element && typeof element.type === 'string')) {
@@ -136,21 +145,82 @@ export const loadLayoutFromJSON = (input: Object) : Layout | {errors: string[], 
             } else {elementName = element.name}
             outputElement.name.set(elementName)
             // Data sources
-            if (!('data' in element)) {
-                warnings.push (`[${name}] [${elementName}] Data sources missing.`);
-                outputElement.data.set([])
-            } else {
-                // ensure is string array
-                if (Array.isArray(element.data) && element.data.length > 0 && element.data.every((source)=> (typeof source === 'string'))) {
-                    outputElement.data.set(element.data as string[])
-                } else if (typeof element.data === 'string') {
-                    // if simple string, encapsulate in array
-                    outputElement.data.set([element.data])
-                } else {
-                    warnings.push (`[${name}] [${elementName}] Data sources were neither string nor string array`);
-                    outputElement.data.set([""])
+            let keysToProcess :string[] = []
+            if(('meta') in element) {
+                if (!isObject(element.meta)) {
+                    warnings.push (`[${name}] [${elementName}] Meta was not an object`);
+                    element.meta = {}
+                }
+                else {
+                    keysToProcess = Object.keys(element.meta);
                 }
             }
+            
+            
+            if (!keysToProcess.includes(element.type)) keysToProcess.push(element.type)
+            keysToProcess.forEach(key=> { // Key is a widget type or other string
+                if (key in widgetDefinitions) {// Then it's a known widget
+                    
+                    outputElement.meta[key] = {};
+                    let widgetProps = widgetDefinitions[key].config?.properties
+                    if (widgetProps === undefined) {return;}
+                     // if the widget has no properties, move on.
+                    // for each property, create an NT-bound store;
+                    Object.keys(widgetProps).forEach((prop) => {
+                        if (widgetProps === undefined) {return;}
+                        let propDefinition = widgetProps[prop]
+                       
+                        let propConfig = element?.meta?.[key]?.[prop]
+                        let topic: string | undefined;
+                        let defaultVal: any;
+                        if (!isObject(propConfig)) { // prop config is missing or malformed
+                            if (propConfig !== undefined) { // prop exists in widget def, not in config
+                                warnings.push (`[${name}] [${elementName}] [${prop}] Property config was not an object`);
+
+                            } else {
+                                topic = undefined;
+                                defaultVal = propDefinition.default
+                            }
+                        }else {
+                            // if propConfig.topic is a string, use it as the NT key
+                            if ('topic' in propConfig && typeof propConfig.topic === 'string') {
+                                topic = propConfig.topic
+                            }
+                            if ('default' in propConfig) {
+                                defaultVal = propConfig.default
+                            }
+                        }
+                        console.log(topic)
+                        let type = propDefinition.type.toString()
+                        let propStore: NTStoreTypes; 
+                        let isBool = (val: any)=> (val === true || val === false)
+                        let isInt = Number.isInteger
+                        let isDouble = Number.isFinite
+                        let isString = (val: any)=> (typeof val === 'string')
+                        let isArray = Array.isArray
+                        let isArrayType = (validator: (val:any) => boolean) => (
+                            (val:any) => isArray(val) && val.every(validator)
+                        )
+                        let validators : {[key: string]: {validate: (val:any)=>boolean, fn: (init:any, key:string | undefined)=>NTStoreTypes}} = {
+                            "boolean":      {validate: isBool,                fn: (init:boolean, key:string | undefined)=>NT.NTBoolean(init, key)},
+                            "integer":      {validate: isInt,                 fn: (init:number, key:string | undefined)=>NT.NTInt(init, key)},
+                            "double":       {validate: isDouble,              fn: (init:number, key:string | undefined)=>NT.NTDouble(init, key)},
+                            "string":       {validate: isString,              fn: (init:string, key:string | undefined)=>NT.NTString(init, key)},
+                            "booleanarray": {validate: isArrayType(isBool),   fn: (init:boolean[], key:string | undefined)=>NT.NTBooleanArray(init, key)},
+                            "integerarray": {validate: isArrayType(isInt),    fn: (init:number[], key:string | undefined)=>NT.NTIntArray(init, key)},
+                            "doublearray":  {validate: isArrayType(isDouble), fn: (init:number[], key:string | undefined)=>NT.NTDoubleArray(init, key)},
+                            "stringarray":  {validate: isArrayType(isString), fn: (init:string[], key:string | undefined)=>NT.NTStringArray(init, key)},
+                        }
+                        if (!validators[type].validate(defaultVal)) {
+                            defaultVal = propDefinition.default
+                        }
+                        propStore = validators[type].fn(defaultVal, topic)
+                        outputElement.meta[key][prop] = propStore
+                    }
+                    )
+                }
+            }
+            )
 
             //layout
             let mins = {x: 1, y: 1,

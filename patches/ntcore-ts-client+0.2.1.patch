@@ -1,0 +1,52 @@
+diff --git a/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.d.ts b/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.d.ts
+index d72c46d..5615ad3 100644
+--- a/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.d.ts
++++ b/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.d.ts
+@@ -1,6 +1,6 @@
+ import { Messenger } from '../socket/messenger';
+ import type { NetworkTablesTopic } from './topic';
+-import type { NetworkTablesTypes } from '../types/types';
++import type { AnnounceMessageParams, NetworkTablesTypes } from '../types/types';
+ /** The client for the PubSub protocol. */
+ export declare class PubSubClient {
+     private readonly _messenger;
+@@ -88,6 +88,8 @@ export declare class PubSubClient {
+      * @returns The topic with the given name, or null if no topic with that name exists.
+      */
+     getTopicFromName(topicName: string): NetworkTablesTopic<any> | null;
++
++    getAllAnnouncedTopics(): Map<string, AnnounceMessageParams>
+     /**
+      * Cleans up the client by unsubscribing from all topics and stopping publishing for all topics.
+      */
+diff --git a/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.js b/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.js
+index 7fd2202..880b7ad 100644
+--- a/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.js
++++ b/node_modules/ntcore-ts-client/src/lib/pubsub/pubsub.js
+@@ -26,6 +26,7 @@ var PubSubClient = /** @class */ (function () {
+          * @param params - The announce message parameters.
+          */
+         this.onTopicAnnounce = function (params) {
++            _this.allTopics.set(params.name, params)
+             var topic = _this.topics.get(params.name);
+             if (!topic) {
+                 console.warn('Received announce for unknown topic', params);
+@@ -48,6 +49,7 @@ var PubSubClient = /** @class */ (function () {
+         };
+         this._messenger = messenger_1.Messenger.getInstance(serverUrl, this.onTopicUpdate, this.onTopicAnnounce, this.onTopicUnannounce);
+         this.topics = new Map();
++        this.allTopics = new Map();
+         // In the DOM, auto-cleanup
+         if (typeof window !== 'undefined') {
+             window.onbeforeunload = function () {
+@@ -182,6 +184,10 @@ var PubSubClient = /** @class */ (function () {
+         var _a;
+         return (_a = this.topics.get(topicName)) !== null && _a !== void 0 ? _a : null;
+     };
++
++    PubSubClient.prototype.getAllAnnouncedTopics = function () {
++        return this.allTopics;
++    };
+     /**
+      * Cleans up the client by unsubscribing from all topics and stopping publishing for all topics.
+      */

@@ -3,7 +3,7 @@
     import type {DashboardElement} from "$lib/config"
 	import { widgetDefinitions } from "$lib/widgets";
     export let config: DashboardElement;
-    let {type, name, data, meta} = config;
+    let {type, name, meta} = config;
 </script>
 
-<svelte:component this={widgetDefinitions[$type]} NT={NT} data={$data} name={$name} {...meta}></svelte:component>
+<svelte:component this={widgetDefinitions[$type]} NT={NT} name={$name} {...meta[$type]}></svelte:component>
